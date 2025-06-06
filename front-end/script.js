@@ -1,5 +1,5 @@
 // Retrieve todo from local storage or initialize an empty array
-let todo = [];
+let todoArray = [];
 
 const todoInput = document.getElementById("todoInput");
 const todoList = document.getElementById("todoList");
@@ -27,7 +27,7 @@ async function fetchTodoList() {
     const response = await fetch("http://localhost:3000/todo");
     if (!response.ok) throw new Error("Network response was not ok");
     const data = await response.json();
-    todo = data;
+    todoArray = data;
     displayTasks();
   } catch (error) {
     console.error("Error fetching todo:", error);
@@ -37,28 +37,32 @@ async function fetchTodoList() {
 // Function to display the tasks in the todo list
 function displayTasks() {
   todoList.innerHTML = "";
-  todo.forEach((item, index) => {
+  todoArray.forEach((item) => {
     const p = document.createElement("p");
     p.innerHTML = `
       <div class="todo-container">
-        <input type="checkbox" class="todo-checkbox" id="input-${index}" ${
+        <input type="checkbox" class="todo-checkbox" id="input-${item.id}" ${
       item.disabled ? "checked" : ""
     }>
-        <p id="todo-${index}" class="${item.disabled ? "disabled" : ""}" >${
+        <p id="todo-${item.id}" class="${item.disabled ? "disabled" : ""}" >${
       item.text
     }</p>
     <div id="button-container">
-        <button class="edit-button" onClick="editTask(${index})"><i class="fa-solid fa-edit"></i></button>
-        <button class="delete-button" onClick="deleteTask(${index})"><i class="fa-solid fa-trash"></i></button> 
+        <button class="edit-button" onClick="editTask(${
+          item.id
+        })"><i class="fa-solid fa-edit"></i></button>
+        <button class="delete-button" onClick="deleteTask(${
+          item.id
+        })"><i class="fa-solid fa-trash"></i></button> 
         </div>
       </div>
     `;
     p.querySelector(".todo-checkbox").addEventListener("change", () =>
-      toggleTask(index)
+      toggleTask(item.id)
     );
     todoList.appendChild(p);
   });
-  todoCount.textContent = todo.length;
+  todoCount.textContent = todoArray.length;
 }
 
 // function to add a new task
@@ -66,7 +70,7 @@ async function addTask() {
   const newTask = todoInput.value.trim();
   if (newTask !== "") {
     try {
-      const response = await fetch("http://localhost:3000/todo", {
+      const response = await fetch("http://localhost:3000/todo/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -81,7 +85,7 @@ async function addTask() {
       }
       const data = await response.json();
       console.log(data);
-      todo.push(data);
+      todoArray.push(data);
       todoInput.value = "";
       displayTasks();
     } catch (error) {
@@ -93,9 +97,10 @@ async function addTask() {
 }
 
 // function to edit a specific task
-function editTask(index) {
-  const todoItem = document.getElementById(`todo-${index}`);
-  const existingText = todo[index].text;
+function editTask(itemId) {
+  const item = todoArray.find((item) => item.id === itemId);
+  const todoItem = document.getElementById(`todo-${itemId}`);
+  const existingText = item.text;
   const inputElement = document.createElement("input");
   inputElement.value = existingText;
   todoItem.replaceWith(inputElement);
@@ -105,16 +110,19 @@ function editTask(index) {
       event.preventDefault();
       const updatedText = inputElement.value.trim();
       if (updatedText) {
-        todo[index].text = updatedText;
+        item.text = updatedText;
         // inputElement.replaceWith(todoItem);
         try {
-          const response = await fetch(`http://localhost:3000/todo/${index}`, {
-            method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(todo[index]),
-          });
+          const response = await fetch(
+            `http://localhost:3000/todo/edit/${itemId}`,
+            {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ text: item.text }),
+            }
+          );
           if (!response.ok) {
             throw new Error("Network response was not ok");
           }
@@ -125,22 +133,30 @@ function editTask(index) {
           console.error("Error editing task:", error);
         }
       }
-      displayTasks();
     }
   });
 }
 
 // function to toggle the completion status of a specific task
-async function toggleTask(index) {
-  todo[index].disabled = !todo[index].disabled;
+async function toggleTask(itemId) {
+  const item = todoArray.find((item) => item.id === itemId);
+  if (item) {
+    item.disabled = !item.disabled;
+  }
   try {
-    const response = await fetch(`http://localhost:3000/todo/${index}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(todo[index]),
-    });
+    const response = await fetch(
+      `http://localhost:3000/todo/toggle/${itemId}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text: item.text,
+          disabled: item.disabled,
+        }),
+      }
+    );
     if (!response.ok) {
       throw new Error("Network response was not ok");
     }
@@ -153,9 +169,9 @@ async function toggleTask(index) {
 }
 
 // function to delete a specific task
-async function deleteTask(index) {
+async function deleteTask(itemId) {
   try {
-    const response = await fetch(`http://localhost:3000/todo/${index}`, {
+    const response = await fetch(`http://localhost:3000/todo/${itemId}`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
@@ -165,7 +181,9 @@ async function deleteTask(index) {
       throw new Error("Network response was not ok");
     }
     console.log(response.status);
-    todo.splice(index, 1);
+    // find the item by id and remove it from the todo array
+    todoArray = todoArray.filter((item) => item.id !== itemId);
+    console.log(todoArray);
     todoInput.value = "";
     displayTasks();
   } catch (error) {
@@ -186,7 +204,7 @@ async function deleteAllTasks() {
       throw new Error("Network response was not ok");
     }
     console.log(response.status);
-    todo = [];
+    todoArray = [];
     todoInput.value = "";
     displayTasks();
   } catch (error) {

@@ -70,7 +70,8 @@ The server will typically run at: http://localhost:3000
 🌐 API Endpoints
 
 - GET/todo - Retrieve all tasks
-- POST/todo - Add a new task
+- POST/todo/create - Add a new task
+- PATCH/todo/edit/:id - Edit a task text
+- PATCH/todo/toggle/:id - Toggle a task active status
 - DELETE/todo/:id - Delete a task
-- PATCH/todo/:id - Update a task
 - DELETE/todo - Delete all tasks
